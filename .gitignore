@@ -50,3 +50,7 @@ node_modules/
 
 # Cache
 *.vsidx
+
+# Publish outputs
+publish/
+deploy.zip
