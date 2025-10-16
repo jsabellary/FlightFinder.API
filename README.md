@@ -18,131 +18,202 @@ ASP.NET Core Web API for flight search functionality.
    - Default: http://localhost:5000
    - Development: https://localhost:5001
 
-## Azure Deployment
+## CI/CD Deployment (Recommended)
 
-### ? Quick Deploy (Recommended)
+### ? Quick Setup - Azure Portal Method
 
-**Use the provided PowerShell script:**
+**This is the recommended way to fix the 404 error and enable proper CI/CD:**
 
+1. **Go to Azure Portal**: https://portal.azure.com
+2. **Navigate to**: App Services ? **flightfinder-api**
+3. **Click**: Deployment Center (left menu under "Deployment")
+4. **Configure**:
+   - Source: **GitHub**
+   - Authorize and select:
+     - Organization: **jsabellary**
+     - Repository: **FlightFinder.API**
+     - Branch: **main**
+   - Authentication: Choose **User-assigned identity** (recommended) or **Basic**
+5. **Click Save**
+
+**That's it!** Azure will:
+- ? Configure GitHub Actions workflow
+- ? Add required secrets to your GitHub repository
+- ? Trigger the first deployment
+- ? Deploy automatically on every push to `main`
+
+**Result**: https://flightfinder-api.azurewebsites.net/api/airports will work!
+
+### ?? Detailed CI/CD Setup
+
+For detailed instructions including manual setup options, see: **[GITHUB_ACTIONS_SETUP.md](GITHUB_ACTIONS_SETUP.md)**
+
+The guide covers:
+- Azure Portal setup (easiest)
+- Manual service principal creation
+- Publish profile method
+- Troubleshooting GitHub Actions
+- Pipeline verification
+
+### Current CI/CD Status
+
+? GitHub Actions workflow configured (`.github/workflows/azure-deploy.yml`)  
+? Repository set up on GitHub  
+? .NET 8.0 (Azure compatible)  
+?? **Action Required**: Configure Azure credentials (see above)
+
+Once configured, every push to `main` will automatically:
+1. Build the application
+2. Run tests (if added)
+3. Deploy to Azure App Service
+4. Make the API available at the live endpoint
+
+---
+
+## Manual Deployment (Not Recommended)
+
+If you need to deploy manually for testing (bypasses CI/CD), see: **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)**
+
+However, **using CI/CD is strongly recommended** for:
+- ? Automated deployments
+- ? Consistent builds
+- ? Deployment history
+- ? Easy rollbacks
+- ? No local environment dependencies
+
+---
+
+## Verifying Deployment
+
+After CI/CD is set up and deployment completes:
+
+### Check GitHub Actions
+- Go to: https://github.com/jsabellary/FlightFinder.API/actions
+- Verify the workflow ran successfully
+- Check build and deployment logs
+
+### Test the API
+
+**PowerShell:**
 ```powershell
-.\deploy-to-azure.ps1
-```
-
-This script will:
-- ? Check Azure CLI is installed and logged in
-- ? Create Resource Group (if needed)
-- ? Create App Service Plan (if needed)
-- ? Create Web App (if needed)
-- ? Build and publish the application
-- ? Deploy to Azure
-- ? Test the endpoint
-
-**First time? Install Azure CLI:**
-- Download: https://aka.ms/installazurecliwindows
-- Then run: `az login`
-
-### Alternative Deployment Options
-
-#### Option 1: Manual Azure CLI
-```bash
-# Login to Azure
-az login
-
-# Create resource group (if needed)
-az group create --name FlightFinder --location eastus
-
-# Create App Service plan (if needed)
-az appservice plan create --name FlightFinderPlan --resource-group FlightFinder --sku B1
-
-# Create web app (if needed)
-az webapp create --name flightfinder-api --resource-group FlightFinder --plan FlightFinderPlan --runtime "DOTNET:8.0"
-
-# Build and deploy
-dotnet publish -c Release -o ./publish
-cd publish
-tar -czf ../deploy.tar.gz *
-cd ..
-az webapp deployment source config-zip --resource-group FlightFinder --name flightfinder-api --src deploy.tar.gz
-```
-
-#### Option 2: Visual Studio Publish
-1. Right-click the project in Solution Explorer
-2. Select **Publish**
-3. Choose **Azure**
-4. Select **Azure App Service (Windows)**
-5. Sign in and select/create your web app
-6. Click **Publish**
-
-#### Option 3: GitHub Actions (For Continuous Deployment)
-1. Go to your Azure Web App in Azure Portal
-2. Navigate to **Deployment Center**
-3. Select **GitHub Actions** as deployment source
-4. Authorize GitHub and select repository: `jsabellary/FlightFinder.API`
-5. Azure will configure the workflow and secrets automatically
-6. Every push to `main` will trigger deployment
-
-**Required GitHub Secrets (if setting up manually):**
-- `AZUREAPPSERVICE_CLIENTID`
-- `AZUREAPPSERVICE_TENANTID`
-- `AZUREAPPSERVICE_SUBSCRIPTIONID`
-
-### Prerequisites
-- Azure subscription
-- Azure CLI installed (for script/CLI deployment)
-- .NET 8.0 SDK installed
-
-### Troubleshooting
-
-**Issue: "Azure CLI not found"**
-- Install Azure CLI: https://aka.ms/installazurecliwindows
-- Restart your terminal after installation
-
-**Issue: 404 Not Found on /api/airports**
-- ? App hasn't been deployed yet ? Use `.\deploy-to-azure.ps1`
-- ? App is still starting ? Wait 30-60 seconds after deployment
-- ? Wrong URL ? Verify: `https://flightfinder-api.azurewebsites.net/api/airports`
-
-**Issue: 500 Internal Server Error**
-- Check Azure Portal ? App Service ? Log Stream
-- Verify FlightFinder.Shared.dll is in the deployment
-- Check Application Insights for detailed errors
-
-**Issue: "The resource group doesn't exist"**
-- Run the PowerShell script - it will create it automatically
-- Or create manually: `az group create --name FlightFinder --location eastus`
-
-**Issue: GitHub Actions workflow failing**
-- Ensure Azure credentials are configured in GitHub Secrets
-- Or use Azure Portal Deployment Center to auto-configure
-
-### Verify Deployment
-
-After deployment, test the endpoints:
-
-```bash
-# PowerShell
 Invoke-WebRequest -Uri "https://flightfinder-api.azurewebsites.net/api/airports"
+```
 
-# curl (Git Bash/Linux/Mac)
-curl https://flightfinder-api.azurewebsites.net/api/airports
-
-# Browser
+**Browser:**
+```
 https://flightfinder-api.azurewebsites.net/api/airports
 ```
 
-Expected response: JSON array of airports with Code, DisplayName, Latitude, and Longitude.
+**Expected Response:**
+```json
+[
+  {
+    "Code": "ATL",
+    "DisplayName": "Atlanta",
+    "Latitude": 33.640411,
+    "Longitude": -84.419853
+  },
+  ...
+]
+```
 
-### Current Status
-? Project targeting .NET 8.0 (LTS - Azure compatible)
-? Web.config configured for Azure App Service
-? GitHub Actions workflow ready
-? PowerShell deployment script ready
-?? **Action Required**: Run deployment using one of the methods above
+### Monitor Deployments
+
+**GitHub:**
+- Repository ? Actions tab
+- View workflow runs and logs
+
+**Azure Portal:**
+- App Service ? Deployment Center ? Logs
+- App Service ? Log Stream (for runtime logs)
+
+---
+
+## Troubleshooting 404 Error
+
+**Issue**: `https://flightfinder-api.azurewebsites.net/api/airports` returns 404
+
+**Root Cause**: Application hasn't been deployed yet (web app is empty)
+
+**Solution**: Set up CI/CD pipeline using Azure Portal method (see above)
+
+**After CI/CD Setup**:
+1. Deployment triggers automatically when you push to `main`
+2. Wait 2-3 minutes for first deployment
+3. Test the endpoint
+4. Future deployments happen automatically on every push
+
+---
+
+## Project Structure
+
+```
+FlightFinder.API/
+??? Controllers/
+?   ??? AirportsController.cs      # GET /api/airports
+?   ??? FlightSearchController.cs  # POST /api/flightsearch
+??? Properties/
+?   ??? launchSettings.json        # Local dev settings
+?   ??? PublishProfiles/           # Deployment profiles
+??? .github/
+?   ??? workflows/
+?       ??? azure-deploy.yml       # GitHub Actions CI/CD
+??? Program.cs                     # Application entry point
+??? Startup.cs                     # Service configuration
+??? SampleData.cs                  # Airport data
+??? web.config                     # IIS/Azure configuration
+??? FlightFinder.API.csproj        # Project file (.NET 8.0)
+```
+
+---
 
 ## Architecture
 
-- **Framework**: ASP.NET Core 8.0
+- **Framework**: ASP.NET Core 8.0 (LTS)
 - **API Style**: RESTful with attribute routing
 - **CORS**: Enabled for all origins (configure for production)
 - **Compression**: Response compression enabled
-- **Hosting**: Compatible with Azure App Service, IIS, Docker
+- **Hosting**: Azure App Service (Windows)
+- **CI/CD**: GitHub Actions
+- **Deployment**: Automated on push to main branch
+
+---
+
+## Development Workflow
+
+1. **Make changes** in your local environment
+2. **Test locally**: `dotnet run`
+3. **Commit changes**: `git commit -m "Your message"`
+4. **Push to GitHub**: `git push origin main`
+5. **GitHub Actions automatically**:
+   - Builds the application
+   - Publishes artifacts
+   - Deploys to Azure
+6. **Verify** at https://flightfinder-api.azurewebsites.net/api/airports
+
+---
+
+## Next Steps
+
+### Immediate
+- [ ] Configure CI/CD using Azure Portal Deployment Center
+- [ ] Verify first deployment succeeds
+- [ ] Test the API endpoints
+
+### Future Enhancements
+- [ ] Add unit tests to CI/CD pipeline
+- [ ] Set up staging environment
+- [ ] Add Application Insights for monitoring
+- [ ] Configure custom domain
+- [ ] Add API authentication
+- [ ] Implement rate limiting
+
+---
+
+## Resources
+
+- **GitHub Actions Setup**: [GITHUB_ACTIONS_SETUP.md](GITHUB_ACTIONS_SETUP.md)
+- **Manual Deployment**: [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)
+- **GitHub Repository**: https://github.com/jsabellary/FlightFinder.API
+- **Azure Portal**: https://portal.azure.com
+- **Live API**: https://flightfinder-api.azurewebsites.net

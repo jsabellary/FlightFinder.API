@@ -1,0 +1,39 @@
+name: Deploy to Azure Web App - Simple
+
+# This is a simplified version using publish profile
+# To use this workflow:
+# 1. Download publish profile from Azure Portal
+# 2. Add it as a secret named AZURE_WEBAPP_PUBLISH_PROFILE
+# 3. Rename this file to azure-deploy.yml (replace the existing one)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up .NET Core
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Build application
+        run: dotnet build --configuration Release
+
+      - name: Publish application
+        run: dotnet publish -c Release -o ./publish
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: 'flightfinder-api'
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: ./publish
