@@ -1,4 +1,3 @@
-# Deploy a .NET Function App using Azure RBAC (AZURE_RBAC_CREDENTIALS secret)
 name: Deploy DotNet project to Azure Function App
 
 on:
@@ -7,38 +6,59 @@ on:
   workflow_dispatch: {}
 
 env:
-  AZURE_FUNCTIONAPP_NAME: 'flightfinder-api'             # set to the exact app name you created
-  AZURE_FUNCTIONAPP_PROJECT_PATH: './src/FlightFinder.API' # change to folder containing your Function .csproj
+  AZURE_FUNCTIONAPP_NAME: 'flightfinder-api'
   DOTNET_VERSION: '9.0.x'
+  PUBLISH_OUTPUT: './output'
 
 jobs:
   build-and-deploy:
     runs-on: windows-latest
     environment: dev
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Login via Azure CLI
-      uses: azure/login@v1
-      with:
-        creds: ${{ secrets.AZURE_RBAC_CREDENTIALS }}
+      - name: Login via Azure CLI
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_RBAC_CREDENTIALS }}
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
 
-    - name: Publish Function Project
-      shell: pwsh
-      run: |
-        pushd ${{ env.AZURE_FUNCTIONAPP_PROJECT_PATH }}
-        dotnet publish -c Release -o ./output
-        popd
+      - name: Show repo layout (diagnostic)
+        shell: pwsh
+        run: |
+          Write-Host "Repository root contents:"
+          Get-ChildItem -Force
+          Write-Host "Searching for csproj files (first 50):"
+          Get-ChildItem -Path . -Recurse -Filter *.csproj | Select-Object -ExpandProperty FullName -First 50
 
-    - name: Run Azure Functions Action
-      uses: Azure/functions-action@v1
-      id: fa
-      with:
-        app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
-        package: '${{ env.AZURE_FUNCTIONAPP_PROJECT_PATH }}/output'
+      - name: Locate project file
+        id: locate
+        shell: pwsh
+        run: |
+          $csproj = Get-ChildItem -Path $Env:GITHUB_WORKSPACE -Recurse -Filter *.csproj -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $csproj) {
+            Write-Error "No .csproj file found in repository. Aborting."
+            exit 1
+          }
+          # Convert full path to workspace-relative path
+          $rel = $csproj.FullName.Substring($Env:GITHUB_WORKSPACE.Length).TrimStart('\','/') -replace '\\','/'
+          Write-Host "Found project: $rel"
+          echo "PROJECT_FILE=$rel" >> $Env:GITHUB_OUTPUT
+
+      - name: Publish Function Project
+        shell: pwsh
+        run: |
+          Write-Host "Publishing project: ${{ steps.locate.outputs.PROJECT_FILE }}"
+          dotnet publish ${{ steps.locate.outputs.PROJECT_FILE }} -c Release -o ${{ env.PUBLISH_OUTPUT }}
+
+      - name: Run Azure Functions Action
+        uses: Azure/functions-action@v1
+        id: fa
+        with:
+          app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
+          package: '${{ env.PUBLISH_OUTPUT }}'
