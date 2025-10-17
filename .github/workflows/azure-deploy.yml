@@ -6,9 +6,38 @@ on:
       - main
   workflow_dispatch:
 
+env:
+  AZURE_RESOURCE_GROUP: 'FlightFinder'
+  AZURE_LOCATION: 'eastus'
+  WEBAPP_NAME: 'flightfinder-api'
+
 jobs:
+  infrastructure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Create Resource Group
+        run: |
+          az group create \
+            --name ${{ env.AZURE_RESOURCE_GROUP }} \
+            --location ${{ env.AZURE_LOCATION }}
+
+      - name: Deploy Azure Infrastructure
+        run: |
+          az deployment group create \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --template-file ./infra/main.bicep \
+            --parameters webAppName=${{ env.WEBAPP_NAME }}
+
   build:
     runs-on: ubuntu-latest
+    needs: infrastructure
 
     steps:
       - uses: actions/checkout@v4
