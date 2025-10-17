@@ -18,55 +18,58 @@ ASP.NET Core Web API for flight search functionality.
    - Default: http://localhost:5000
    - Development: https://localhost:5001
 
-## CI/CD Deployment (Recommended)
+## CI/CD Deployment with Infrastructure as Code
 
-### ? Quick Setup - Azure Portal Method
+### ? Automated Deployment
 
-**This is the recommended way to fix the 404 error and enable proper CI/CD:**
+The repository includes Infrastructure as Code (Bicep) that automatically provisions Azure resources during deployment.
 
-1. **Go to Azure Portal**: https://portal.azure.com
-2. **Navigate to**: App Services ? **flightfinder-api**
-3. **Click**: Deployment Center (left menu under "Deployment")
-4. **Configure**:
-   - Source: **GitHub**
-   - Authorize and select:
-     - Organization: **jsabellary**
-     - Repository: **FlightFinder.API**
-     - Branch: **main**
-   - Authentication: Choose **User-assigned identity** (recommended) or **Basic**
-5. **Click Save**
+**What's Automated:**
+- ✅ Azure Resource Group creation
+- ✅ Azure App Service Plan provisioning
+- ✅ Azure Web App creation
+- ✅ Application build and deployment
+- ✅ Automatic deployment on every push to `main`
 
-**That's it!** Azure will:
-- ? Configure GitHub Actions workflow
-- ? Add required secrets to your GitHub repository
-- ? Trigger the first deployment
-- ? Deploy automatically on every push to `main`
+### ? Setup Requirements
 
-**Result**: https://flightfinder-api.azurewebsites.net/api/airports will work!
+**You only need to configure Azure credentials once:**
 
-### ?? Detailed CI/CD Setup
+1. **Create Azure Service Principal**:
+   ```bash
+   az ad sp create-for-rbac \
+     --name "FlightFinderAPI-GitHub" \
+     --role contributor \
+     --scopes /subscriptions/{subscription-id} \
+     --sdk-auth
+   ```
 
-For detailed instructions including manual setup options, see: **[GITHUB_ACTIONS_SETUP.md](GITHUB_ACTIONS_SETUP.md)**
+2. **Add GitHub Secret**:
+   - Go to: Repository **Settings** → **Secrets and variables** → **Actions**
+   - Create secret named: `AZURE_CREDENTIALS`
+   - Paste the entire JSON output from step 1
 
-The guide covers:
-- Azure Portal setup (easiest)
-- Manual service principal creation
-- Publish profile method
-- Troubleshooting GitHub Actions
-- Pipeline verification
+3. **Push to main branch** - deployment starts automatically!
 
-### Current CI/CD Status
+### Current CI/CD Pipeline
 
 ? GitHub Actions workflow configured (`.github/workflows/azure-deploy.yml`)  
-? Repository set up on GitHub  
+? Infrastructure as Code with Bicep (`infra/main.bicep`)  
+? Automatic infrastructure provisioning  
 ? .NET 8.0 (Azure compatible)  
-?? **Action Required**: Configure Azure credentials (see above)
+⏳ **Action Required**: Configure `AZURE_CREDENTIALS` secret
 
-Once configured, every push to `main` will automatically:
-1. Build the application
-2. Run tests (if added)
-3. Deploy to Azure App Service
-4. Make the API available at the live endpoint
+### How It Works
+
+Every push to `main` automatically:
+1. **Provisions Infrastructure** - Creates Azure resources if they don't exist
+2. **Builds Application** - Compiles .NET 8.0 project
+3. **Deploys to Azure** - Publishes to Azure Web App
+4. **API Goes Live** - Available at https://flightfinder-api.azurewebsites.net
+
+### Alternative Setup Methods
+
+For detailed instructions including Azure Portal setup and publish profile method, see: **[GITHUB_ACTIONS_SETUP.md](GITHUB_ACTIONS_SETUP.md)**
 
 ---
 
@@ -158,6 +161,8 @@ FlightFinder.API/
 ??? .github/
 ?   ??? workflows/
 ?       ??? azure-deploy.yml       # GitHub Actions CI/CD
+??? infra/
+?   ??? main.bicep                 # Azure infrastructure (IaC)
 ??? Program.cs                     # Application entry point
 ??? Startup.cs                     # Service configuration
 ??? SampleData.cs                  # Airport data
