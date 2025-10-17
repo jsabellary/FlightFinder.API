@@ -1,8 +1,9 @@
 name: Deploy DotNet project to Azure Function App
 
+# DISABLED: This workflow is for Azure Functions deployment
+# FlightFinder.API is an ASP.NET Core Web API (not Azure Functions)
+# Use azure-deploy.yml for Web App deployment instead
 on:
-  push:
-    branches: ["main"]
   workflow_dispatch: {}
 
 env:
